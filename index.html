@@ -1,0 +1,1248 @@
+import tkinter as tk
+import random
+import json
+import os
+
+# ============================================================
+# TOÁN 9 - THỬ THÁCH NHIỀU MÀN
+# ============================================================
+
+root = tk.Tk()
+root.title("🧠 TOÁN 9 - HÀNH TRÌNH THỬ THÁCH")
+root.geometry("1100x720")
+root.minsize(950, 650)
+root.configure(bg="#0b1020")
+
+# ============================================================
+# NGÂN HÀNG CÂU HỎI
+# ============================================================
+
+questions = [
+    ("Giải phương trình: 2x + 5 = 15",
+     ["3", "5", "7", "10"], "5"),
+
+    ("Giải phương trình: 3x - 6 = 12",
+     ["4", "6", "8", "10"], "6"),
+
+    ("Tính √81",
+     ["7", "8", "9", "10"], "9"),
+
+    ("Tính √49 + √16",
+     ["9", "10", "11", "12"], "11"),
+
+    ("Nếu y = 2x + 1 và x = 3 thì y bằng bao nhiêu?",
+     ["5", "6", "7", "8"], "7"),
+
+    ("Nghiệm của x² = 25 là:",
+     ["x = 5", "x = -5", "x = ±5", "x = 25"], "x = ±5"),
+
+    ("Một tam giác vuông có hai cạnh góc vuông 3 và 4. Cạnh huyền bằng:",
+     ["5", "6", "7", "8"], "5"),
+
+    ("Tính: (x + 2)(x - 2)",
+     ["x² + 4", "x² - 4", "x² + 2", "x² - 2"], "x² - 4"),
+
+    ("Nếu sin A = 1/2 và A là góc nhọn thì A bằng:",
+     ["30°", "45°", "60°", "90°"], "30°"),
+
+    ("Giải: x² - 9 = 0",
+     ["x = 3", "x = -3", "x = ±3", "x = 9"], "x = ±3"),
+
+    ("Hệ số góc của đường thẳng y = 3x - 2 là:",
+     ["-2", "2", "3", "-3"], "3"),
+
+    ("Tính √100 - √36",
+     ["2", "4", "6", "8"], "4"),
+
+    ("Phương trình x² - 5x + 6 = 0 có nghiệm:",
+     ["1 và 6", "2 và 3", "-2 và -3", "3 và 4"], "2 và 3"),
+
+    ("Nếu a = 3, b = 4 thì a² + b² bằng:",
+     ["7", "12", "25", "49"], "25"),
+
+    ("Diện tích hình tròn bán kính 3 cm, lấy π ≈ 3,14:",
+     ["18,84", "28,26", "9,42", "37,68"], "28,26")
+]
+
+# ============================================================
+# CẤU HÌNH 5 MÀN
+# ============================================================
+
+STAGES = {
+    1: {
+        "name": "KHỞI ĐỘNG",
+        "time": 90,
+        "points": 5,
+        "count": 5,
+        "color": "#22c55e"
+    },
+
+    2: {
+        "name": "TĂNG TỐC",
+        "time": 75,
+        "points": 8,
+        "count": 7,
+        "color": "#38bdf8"
+    },
+
+    3: {
+        "name": "BỨT PHÁ",
+        "time": 60,
+        "points": 10,
+        "count": 8,
+        "color": "#a78bfa"
+    },
+
+    4: {
+        "name": "THỬ THÁCH",
+        "time": 50,
+        "points": 12,
+        "count": 10,
+        "color": "#f97316"
+    },
+
+    5: {
+        "name": "CHUNG KẾT",
+        "time": 40,
+        "points": 20,
+        "count": 15,
+        "color": "#ef4444"
+    }
+}
+
+# ============================================================
+# BIẾN GAME
+# ============================================================
+
+score = 0
+question_number = 1
+time_left = 0
+correct = 0
+wrong = 0
+streak = 0
+
+current_answer = ""
+running = False
+
+selected_stage = 1
+
+# ============================================================
+# LƯU TIẾN TRÌNH
+# ============================================================
+
+SAVE_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "toan9_progress.json"
+)
+
+def load_progress():
+    try:
+        with open(SAVE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            value = int(data.get("unlocked_stage", 1))
+            return max(1, min(value, len(STAGES)))
+    except (FileNotFoundError, json.JSONDecodeError, ValueError, OSError):
+        return 1
+
+def save_progress():
+    try:
+        with open(SAVE_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                {"unlocked_stage": unlocked_stage},
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+    except OSError:
+        pass
+
+unlocked_stage = load_progress()
+
+game_questions = []
+
+# ============================================================
+# MÀU GIAO DIỆN
+# ============================================================
+
+BG = "#0b1020"
+PANEL = "#111a2e"
+CARD = "#17233d"
+CARD2 = "#1d2c4a"
+
+WHITE = "#f8fafc"
+MUTED = "#94a3b8"
+
+CYAN = "#38bdf8"
+GREEN = "#22c55e"
+RED = "#ef4444"
+YELLOW = "#facc15"
+
+# ============================================================
+# XÓA GIAO DIỆN
+# ============================================================
+
+def clear_root():
+
+    for widget in root.winfo_children():
+        widget.destroy()
+
+
+# ============================================================
+# TẠO NÚT
+# ============================================================
+
+def make_button(
+    parent,
+    text,
+    command,
+    bg=CARD2,
+    fg=WHITE,
+    width=20,
+    height=2,
+    font=15
+):
+
+    return tk.Button(
+        parent,
+        text=text,
+        command=command,
+
+        font=("Segoe UI", font, "bold"),
+
+        width=width,
+        height=height,
+
+        bg=bg,
+        fg=fg,
+
+        activebackground=bg,
+        activeforeground=fg,
+
+        relief="flat",
+        bd=0,
+
+        cursor="hand2"
+    )
+
+
+# ============================================================
+# NỀN
+# ============================================================
+
+def gradient_background(parent):
+
+    canvas = tk.Canvas(
+        parent,
+        bg=BG,
+        highlightthickness=0
+    )
+
+    canvas.pack(
+        fill="both",
+        expand=True
+    )
+
+    # Các vòng tròn trang trí
+    for i in range(15):
+
+        x = -180 + i * 110
+        y = 60 + (i % 4) * 150
+
+        canvas.create_oval(
+            x,
+            y,
+            x + 360,
+            y + 360,
+
+            fill="#101a31" if i % 2 else "#0e1830",
+
+            outline=""
+        )
+
+    return canvas
+
+
+# ============================================================
+# XÓA TIẾN TRÌNH
+# ============================================================
+
+def reset_progress():
+    global unlocked_stage, selected_stage
+    unlocked_stage = 1
+    selected_stage = 1
+    save_progress()
+    show_menu()
+
+
+# ============================================================
+# MENU CHỌN MÀN
+# ============================================================
+
+def show_menu():
+
+    global running
+
+    running = False
+
+    clear_root()
+
+    canvas = gradient_background(root)
+
+    content = tk.Frame(
+        canvas,
+        bg=PANEL
+    )
+
+    canvas.create_window(
+        550,
+        350,
+        window=content,
+        width=850,
+        height=610
+    )
+
+    tk.Label(
+        content,
+        text="🗺️",
+        font=("Segoe UI Emoji", 48),
+        bg=PANEL,
+        fg=WHITE
+    ).pack(pady=(15, 0))
+
+    tk.Label(
+        content,
+        text="VelMath",
+        font=("Segoe UI", 30, "bold"),
+        bg=PANEL,
+        fg=WHITE
+    ).pack()
+
+    tk.Label(
+        content,
+        text="TRÍ TUỆ • NHANH NHẠY • CHUỖI ĐIỂM",
+        font=("Segoe UI", 16, "bold"),
+        bg=PANEL,
+        fg=CYAN
+    ).pack()
+
+    tk.Label(
+        content,
+        text=f"🔓 Đã mở khóa: Màn {unlocked_stage}/{len(STAGES)}",
+        font=("Segoe UI", 12, "bold"),
+        bg=PANEL,
+        fg=MUTED
+    ).pack(pady=8)
+
+    # Khung các màn
+    stage_frame = tk.Frame(
+        content,
+        bg=PANEL
+    )
+
+    stage_frame.pack(pady=5)
+
+    for number, data in STAGES.items():
+
+        locked = number > unlocked_stage
+
+        if locked:
+
+            icon = "🔒"
+
+            bg = "#263449"
+            fg = MUTED
+
+            command = lambda: None
+
+        else:
+
+            if number == 5:
+                icon = "🏆"
+            else:
+                icon = str(number)
+
+            bg = data["color"]
+            fg = "#07111f"
+
+            command = lambda n=number: choose_stage(n)
+
+        button = make_button(
+            stage_frame,
+
+            f"{icon}\n"
+            f"MÀN {number}\n"
+            f"{data['name']}\n"
+            f"{data['count']} câu • {data['time']}s",
+
+            command,
+
+            bg=bg,
+            fg=fg,
+
+            width=17,
+            height=4,
+
+            font=11
+        )
+
+        row = (number - 1) // 3
+        column = (number - 1) % 3
+
+        button.grid(
+            row=row,
+            column=column,
+
+            padx=8,
+            pady=8
+        )
+
+    tk.Label(
+        content,
+
+        text=(
+            "💡 Trả lời đúng ít nhất 50% để mở khóa màn tiếp theo!\n"
+            "⭐ Màn càng cao → càng nhiều điểm!"
+        ),
+
+        font=("Segoe UI", 11),
+
+        bg=PANEL,
+        fg=MUTED
+    ).pack(pady=10)
+
+    make_button(
+        content,
+
+        "🗑️ XÓA TIẾN TRÌNH",
+
+        reset_progress,
+
+        bg="#3b2630",
+        fg="#fecaca",
+
+        width=18,
+        height=1,
+
+        font=10
+    ).pack(pady=(0, 6))
+
+    make_button(
+        content,
+
+        "❌ THOÁT",
+
+        root.destroy,
+
+        bg="#273449",
+        fg=MUTED,
+
+        width=15,
+        height=1,
+
+        font=11
+    ).pack()
+
+
+# ============================================================
+# CHỌN MÀN
+# ============================================================
+
+def choose_stage(stage):
+
+    global selected_stage
+
+    selected_stage = stage
+
+    start_game()
+
+
+# ============================================================
+# GIAO DIỆN GAME
+# ============================================================
+
+def build_game_ui():
+
+    clear_root()
+
+    root.configure(
+        bg=BG
+    )
+
+    # ---------------- HEADER ----------------
+
+    header = tk.Frame(
+        root,
+        bg="#101a31",
+        height=82
+    )
+
+    header.pack(
+        fill="x"
+    )
+
+    header.pack_propagate(False)
+
+    tk.Label(
+        header,
+
+        text="🧠 TOÁN 9",
+
+        font=("Segoe UI", 24, "bold"),
+
+        bg="#101a31",
+        fg=WHITE
+    ).pack(
+        side="left",
+        padx=28
+    )
+
+    stage_color = STAGES[selected_stage]["color"]
+
+    tk.Label(
+        header,
+
+        text=(
+            f"🎮 MÀN {selected_stage}: "
+            f"{STAGES[selected_stage]['name']}"
+        ),
+
+        font=("Segoe UI", 13, "bold"),
+
+        bg=stage_color,
+        fg="#07111f",
+
+        padx=15,
+        pady=7
+    ).pack(
+        side="left",
+        padx=10
+    )
+
+    make_button(
+        header,
+
+        "☰ MENU",
+
+        show_menu,
+
+        bg="#273449",
+        fg=WHITE,
+
+        width=10,
+        height=1,
+
+        font=10
+    ).pack(
+        side="right",
+        padx=25
+    )
+
+    # ---------------- THÔNG SỐ ----------------
+
+    stats = tk.Frame(
+        root,
+        bg=BG
+    )
+
+    stats.pack(
+        fill="x",
+        padx=45,
+        pady=16
+    )
+
+    global score_label
+    global question_label
+    global timer_label
+    global streak_label
+
+    score_label = tk.Label(
+        stats,
+
+        text="⭐ 0 điểm",
+
+        font=("Segoe UI", 14, "bold"),
+
+        bg=BG,
+        fg=YELLOW
+    )
+
+    score_label.pack(
+        side="left"
+    )
+
+    question_label = tk.Label(
+        stats,
+
+        text="📚 Câu 1",
+
+        font=("Segoe UI", 14, "bold"),
+
+        bg=BG,
+        fg=WHITE
+    )
+
+    question_label.pack(
+        side="left",
+        padx=50
+    )
+
+    streak_label = tk.Label(
+        stats,
+
+        text="🔥 Chuỗi: 0",
+
+        font=("Segoe UI", 14, "bold"),
+
+        bg=BG,
+        fg="#fb923c"
+    )
+
+    streak_label.pack(
+        side="right",
+        padx=35
+    )
+
+    timer_label = tk.Label(
+        stats,
+
+        text="⏱️ 60s",
+
+        font=("Segoe UI", 14, "bold"),
+
+        bg=BG,
+        fg=GREEN
+    )
+
+    timer_label.pack(
+        side="right"
+    )
+
+    # ---------------- THANH THỜI GIAN ----------------
+
+    global progress_canvas
+
+    progress_canvas = tk.Canvas(
+        root,
+
+        height=8,
+
+        bg="#1e293b",
+
+        highlightthickness=0
+    )
+
+    progress_canvas.pack(
+        fill="x",
+        padx=45
+    )
+
+    # ---------------- CARD ----------------
+
+    card = tk.Frame(
+        root,
+        bg=CARD
+    )
+
+    card.pack(
+        fill="both",
+        expand=True,
+
+        padx=45,
+        pady=18
+    )
+
+    global question_text
+    global message
+    global answer_frame
+    global answer_buttons
+    global start_button
+
+    question_text = tk.Label(
+        card,
+
+        text="",
+
+        font=("Segoe UI", 25, "bold"),
+
+        bg=CARD,
+        fg=WHITE,
+
+        wraplength=850,
+
+        justify="center"
+    )
+
+    question_text.pack(
+        pady=(38, 20)
+    )
+
+    # ---------------- ĐÁP ÁN ----------------
+
+    answer_frame = tk.Frame(
+        card,
+        bg=CARD
+    )
+
+    answer_frame.pack()
+
+    answer_buttons = []
+
+    for i in range(4):
+
+        button = make_button(
+            answer_frame,
+
+            f"{chr(65 + i)}.",
+
+            lambda i=i:
+                answer(
+                    game_questions[
+                        question_number - 1
+                    ][1][i]
+                ),
+
+            bg=CARD2,
+            fg=WHITE,
+
+            width=29,
+            height=2,
+
+            font=14
+        )
+
+        button.grid(
+            row=i // 2,
+            column=i % 2,
+
+            padx=10,
+            pady=9
+        )
+
+        answer_buttons.append(
+            button
+        )
+
+    # ---------------- THÔNG BÁO ----------------
+
+    message = tk.Label(
+        root,
+
+        text="",
+
+        font=("Segoe UI", 15, "bold"),
+
+        bg=BG,
+        fg=WHITE
+    )
+
+    message.pack(
+        pady=2
+    )
+
+    # ---------------- NÚT CHƠI LẠI ----------------
+
+    start_button = make_button(
+        root,
+
+        "🔄 CHƠI LẠI",
+
+        start_game,
+
+        bg=CYAN,
+        fg="#07111f",
+
+        width=16,
+        height=1,
+
+        font=12
+    )
+
+    start_button.pack(
+        pady=(3, 14)
+    )
+
+
+# ============================================================
+# CẬP NHẬT THÔNG SỐ
+# ============================================================
+
+def update_stats():
+
+    score_label.config(
+        text=f"⭐ {score} điểm"
+    )
+
+    question_label.config(
+        text=(
+            f"📚 Câu {question_number}"
+            f"/{len(game_questions)}"
+        )
+    )
+
+    timer_label.config(
+        text=f"⏱️ {time_left}s"
+    )
+
+    streak_label.config(
+        text=f"🔥 Chuỗi: {streak}"
+    )
+
+    update_progress()
+
+
+# ============================================================
+# THANH THỜI GIAN
+# ============================================================
+
+def update_progress():
+
+    if not game_questions:
+        return
+
+    ratio = max(
+        0,
+
+        min(
+            1,
+
+            time_left /
+            STAGES[selected_stage]["time"]
+        )
+    )
+
+    progress_canvas.delete(
+        "all"
+    )
+
+    width = progress_canvas.winfo_width()
+
+    if ratio > 0.5:
+
+        color = GREEN
+
+    elif ratio > 0.25:
+
+        color = YELLOW
+
+    else:
+
+        color = RED
+
+    progress_canvas.create_rectangle(
+        0,
+        0,
+
+        width * ratio,
+        8,
+
+        fill=color,
+
+        outline=""
+    )
+
+
+# ============================================================
+# CÂU HỎI MỚI
+# ============================================================
+
+def new_question():
+
+    global current_answer
+
+    if question_number > len(game_questions):
+
+        end_game()
+
+        return
+
+    q = game_questions[
+        question_number - 1
+    ]
+
+    current_answer = q[2]
+
+    question_text.config(
+        text=q[0]
+    )
+
+    message.config(
+        text=""
+    )
+
+    for i, button in enumerate(answer_buttons):
+
+        button.config(
+            text=f"{chr(65+i)}. {q[1][i]}",
+
+            state="normal",
+
+            bg=CARD2,
+
+            fg=WHITE
+        )
+
+
+# ============================================================
+# HIỆU ỨNG ĐÚNG / SAI
+# ============================================================
+
+def flash_effect(color):
+
+    old_color = question_text.cget(
+        "bg"
+    )
+
+    question_text.config(
+        bg=color
+    )
+
+    root.after(
+        150,
+
+        lambda:
+        question_text.config(
+            bg=old_color
+        )
+    )
+
+
+def animate_score():
+
+    old_font = score_label.cget(
+        "font"
+    )
+
+    score_label.config(
+        font=("Segoe UI", 20, "bold")
+    )
+
+    root.after(
+        220,
+
+        lambda:
+        score_label.config(
+            font=old_font
+        )
+    )
+
+
+# ============================================================
+# TRẢ LỜI
+# ============================================================
+
+def answer(choice):
+
+    global score
+    global correct
+    global wrong
+    global streak
+
+    if not running:
+        return
+
+    # Khóa nút để không trả lời 2 lần
+    for button in answer_buttons:
+
+        button.config(
+            state="disabled"
+        )
+
+    if choice == current_answer:
+
+        # Tăng chuỗi trả lời đúng
+        streak += 1
+        correct += 1
+
+        # Thưởng thêm điểm khi có chuỗi
+        bonus = 0
+        if streak >= 3:
+            bonus = (streak - 2) * 2
+            score += bonus
+        score += STAGES[selected_stage]["points"]
+
+        message.config(
+
+            text=(
+                "✨ CHÍNH XÁC! "
+                f"+{STAGES[selected_stage]['points']} điểm "
+                f"🔥 Chuỗi {streak}"
+                + (f" (+{bonus} bonus)" if bonus else "")
+            ),
+
+            fg=GREEN
+        )
+
+        flash_effect(
+            "#173b35"
+        )
+
+        animate_score()
+
+    else:
+
+        # Sai thì phá chuỗi
+        streak = 0
+        wrong += 1
+
+        message.config(
+
+            text=(
+                "❌ CHƯA ĐÚNG!\n"
+                f"Đáp án: {current_answer}"
+            ),
+
+            fg=RED
+        )
+
+        flash_effect(
+            "#451d29"
+        )
+
+    update_stats()
+
+    root.after(
+        700,
+        next_question
+    )
+
+
+# ============================================================
+# CÂU TIẾP THEO
+# ============================================================
+
+def next_question():
+
+    global question_number
+
+    if not running:
+        return
+
+    question_number += 1
+
+    if question_number > len(game_questions):
+
+        end_game()
+
+    else:
+
+        new_question()
+
+        update_stats()
+
+
+# ============================================================
+# BẮT ĐẦU MÀN
+# ============================================================
+
+def start_game():
+
+    global score
+    global question_number
+    global time_left
+    global correct
+    global wrong
+    global streak
+    global running
+    global game_questions
+
+    stage = STAGES[
+        selected_stage
+    ]
+
+    score = 0
+
+    correct = 0
+
+    wrong = 0
+
+    streak = 0
+
+    question_number = 1
+
+    time_left = stage["time"]
+
+    running = True
+
+    # Chọn câu ngẫu nhiên
+    game_questions = random.sample(
+        questions,
+
+        min(
+            stage["count"],
+            len(questions)
+        )
+    )
+
+    build_game_ui()
+
+    new_question()
+
+    update_stats()
+
+    countdown()
+
+
+# ============================================================
+# ĐẾM NGƯỢC
+# ============================================================
+
+def countdown():
+
+    global time_left
+    global running
+
+    if not running:
+        return
+
+    if time_left <= 0:
+
+        end_game()
+
+        return
+
+    time_left -= 1
+
+    update_stats()
+
+    root.after(
+        1000,
+        countdown
+    )
+
+
+# ============================================================
+# KẾT THÚC MÀN
+# ============================================================
+
+def end_game():
+
+    global running
+    global unlocked_stage
+
+    running = False
+
+    for button in answer_buttons:
+
+        button.config(
+            state="disabled"
+        )
+
+    # Tính tỷ lệ
+    if game_questions:
+
+        percent = (
+            correct /
+            len(game_questions)
+        ) * 100
+
+    else:
+
+        percent = 0
+
+    # Mở màn mới nếu đạt 50%
+    if percent >= 50:
+
+        if selected_stage < len(STAGES):
+
+            unlocked_stage = max(
+                unlocked_stage,
+                selected_stage + 1
+            )
+            save_progress()
+
+    # Xếp hạng
+    if percent >= 80:
+
+        result = "🏆 XUẤT SẮC!"
+
+        result_color = YELLOW
+
+    elif percent >= 60:
+
+        result = "👏 RẤT TỐT!"
+
+        result_color = GREEN
+
+    elif percent >= 50:
+
+        result = "👍 ĐÃ VƯỢT QUA!"
+
+        result_color = CYAN
+
+    else:
+
+        result = "💪 HÃY THỬ LẠI!"
+
+        result_color = RED
+
+    question_text.config(
+
+        text=(
+            f"{result}\n\n"
+
+            f"🎮 Màn {selected_stage}: "
+            f"{STAGES[selected_stage]['name']}\n\n"
+
+            f"⭐ Điểm: {score}\n"
+
+            f"✅ Đúng: {correct}/"
+            f"{len(game_questions)}\n"
+
+            f"❌ Sai: {wrong}\n"
+
+            f"🔥 Chuỗi cuối: {streak}\n"
+
+            f"📊 Tỷ lệ đúng: "
+            f"{percent:.0f}%"
+        )
+    )
+
+    message.config(
+
+        text=(
+            "🎉 Bạn đã hoàn thành màn!"
+            if percent >= 50
+            else
+            "😢 Chưa đạt 50%. Hãy thử lại!"
+        ),
+
+        fg=result_color
+    )
+
+    # Nếu đã mở màn tiếp theo
+    if (
+        selected_stage < len(STAGES)
+        and
+        unlocked_stage > selected_stage
+    ):
+
+        start_button.config(
+
+            text=(
+                f"➡️ MÀN "
+                f"{selected_stage + 1}"
+            ),
+
+            command=lambda:
+                choose_stage(
+                    selected_stage + 1
+                )
+        )
+
+    else:
+
+        start_button.config(
+
+            text="🔄 CHƠI LẠI",
+
+            command=start_game
+        )
+
+
+# ============================================================
+# CHẠY GAME
+# ============================================================
+
+show_menu()
+
+root.mainloop()
